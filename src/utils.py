@@ -32,7 +32,8 @@ def create_tables(dbname):
                         callsign VARCHAR(20),
                         baro_altitude FLOAT,
                         on_ground BOOLEAN,
-                        velocity FLOAT)"""
+                        velocity FLOAT,
+                        country_id INTEGER REFERENCES countries(id))"""
             )
 
     conn.close()
@@ -43,7 +44,8 @@ def insert_data(dbname):
     with conn as conn:
         with conn.cursor() as cur:
             for country in COUNTRIES:
-                cur.execute("""INSERT INTO countries (name) VALUES (%s)""", (country,))
+                cur.execute("""INSERT INTO countries (name) VALUES (%s) RETURNING id""", (country,))
+                country_id = cur.fetchone()[0]
 
                 nm = NominatimAPI(country)
                 coords = nm.get_data()
@@ -53,9 +55,14 @@ def insert_data(dbname):
                 for airplane in airplanes:
                     cur.execute(
                         """
-                    INSERT INTO airplanes (id, callsign, baro_altitude, on_ground, velocity)
-                    VALUES (%s, %s, %s, %s, %s)
-                    ON CONFLICT (id) DO NOTHING
+                    INSERT INTO airplanes (id, callsign, baro_altitude, on_ground, velocity, country_id)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE SET
+                        callsign = EXCLUDED.callsign,
+                        baro_altitude = EXCLUDED.baro_altitude,
+                        on_ground = EXCLUDED.on_ground,
+                        velocity = EXCLUDED.velocity,
+                        country_id = EXCLUDED.country_id;
                     """,
                         (
                             airplane["id"],
@@ -63,13 +70,8 @@ def insert_data(dbname):
                             airplane["baro_altitude"],
                             airplane["on_ground"],
                             airplane["velocity"],
+                            country_id,
                         ),
                     )
 
     conn.close()
-
-
-# db_name = "coursework_3"
-# create_database(db_name)
-# create_tables(db_name)
-# insert_data(db_name)

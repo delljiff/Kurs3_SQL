@@ -72,11 +72,11 @@ class DBManager:
         """
         Получает список всех самолетов, в позывном которых содержатся переданные в метод символы
         """
-        search_pattern = f"%{keyword}%"
         query = """
         SELECT id, callsign, baro_altitude, on_ground, velocity
         FROM airplanes
-        WHERE callsign ILIKE '{search_pattern}'
+        WHERE callsign ILIKE %s
         ORDER BY callsign
         """
+        search_pattern = f"%{keyword}%"
         return self.execute_query(query, (search_pattern,))
